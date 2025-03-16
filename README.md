@@ -1,6 +1,6 @@
 # Bundle Marketplace with Shapley Value Pricing
 
-This project implements a proof-of-concept for an bundle marketplace where multiple buyers can cooperatively purchase bundles of assets (groceries, cars, online orders) represented as unique ERC-721s (NFT) with fair pricing based on Shapley value calculations.
+This project implements a proof-of-concept for an bundle marketplace where multiple buyers can cooperatively purchase bundles of assets (groceries, cars, online orders) represented as unique ERC-721s (NFT) with fair pricing based on Shapley value calculations. The ultimate future vision is to have personalized AIs study the behavior of users' purchase patterns and coodrinate on Ethereum to form consumer grand coalitions to acquire products for a cheaper price!
 
 ## Overview
 
