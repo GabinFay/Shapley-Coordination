@@ -1,0 +1,236 @@
+{
+  "marketplace_address": "0xfc1e512D6783E17C5E8B48Ca7a906A0C13e04224",
+  "nft_address": "0xf1B1ABA247B9953eb36dED56e774c9F3054513D4",
+  "accounts": [
+    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+  ],
+  "nfts": [
+    {
+      "token_id": 0,
+      "name": "Sunset Horizon",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 1,
+      "name": "Mountain Peak",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 2,
+      "name": "Ocean Wave",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 3,
+      "name": "Forest Path",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 4,
+      "name": "Desert Dunes",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 100,
+      "name": "Dragon Slayer",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 101,
+      "name": "Magic Wand",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 102,
+      "name": "Ancient Sword",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 103,
+      "name": "Mystic Shield",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 104,
+      "name": "Golden Armor",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 200,
+      "name": "Vinyl Record",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 201,
+      "name": "Electric Guitar",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 202,
+      "name": "Grand Piano",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 203,
+      "name": "Drum Set",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    {
+      "token_id": 204,
+      "name": "Saxophone",
+      "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    }
+  ],
+  "bundles": [
+    {
+      "id": 1,
+      "name": "Art Collection Bundle",
+      "item_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "price": 0.15,
+      "required_buyers": 3,
+      "seller": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "interested_buyers": [
+        {
+          "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "items": [
+            1,
+            2
+          ]
+        },
+        {
+          "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+          "items": [
+            3,
+            4
+          ]
+        }
+      ],
+      "completed": false
+    },
+    {
+      "id": 2,
+      "name": "Game Items Bundle",
+      "item_ids": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "price": 0.2,
+      "required_buyers": 3,
+      "seller": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "interested_buyers": [
+        {
+          "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "items": [
+            6,
+            7
+          ],
+          "paid": true
+        },
+        {
+          "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+          "items": [
+            8,
+            9
+          ],
+          "paid": true
+        },
+        {
+          "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+          "items": [
+            7,
+            10
+          ]
+        }
+      ],
+      "completed": false,
+      "shapley_values": {
+        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": 0.06,
+        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": 0.08000000000000002,
+        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": 0.06
+      }
+    },
+    {
+      "id": 3,
+      "name": "Music Collection Bundle",
+      "item_ids": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "price": 0.18,
+      "required_buyers": 3,
+      "seller": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "interested_buyers": [
+        {
+          "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "items": [
+            11,
+            12
+          ],
+          "paid": true
+        },
+        {
+          "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+          "items": [
+            13,
+            14
+          ],
+          "paid": true
+        },
+        {
+          "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+          "items": [
+            12,
+            15
+          ],
+          "paid": true
+        }
+      ],
+      "completed": true,
+      "shapley_values": {
+        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": 0.054,
+        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": 0.072,
+        "0x90F79bf6EB2c4f870365E785982E1f101E93b906": 0.054
+      }
+    },
+    {
+      "id": 4,
+      "name": "Mixed Collection Bundle",
+      "item_ids": [
+        1,
+        7,
+        13
+      ],
+      "price": 0.1,
+      "required_buyers": 3,
+      "seller": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "interested_buyers": [
+        {
+          "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+          "items": [
+            1,
+            13
+          ]
+        }
+      ],
+      "completed": false
+    }
+  ],
+  "almost_full_bundle": 1,
+  "almost_purchased_bundle": 2
+}

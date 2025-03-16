@@ -16,17 +16,15 @@ load_dotenv()
 # Configuration
 ANVIL_PORT = 8545
 INFURA_KEY = os.getenv("INFURA_KEY")  # Get Infura key from environment variable
-FORK_URL = f"https://mainnet.infura.io/v3/{INFURA_KEY}"
-FORK_BLOCK_NUMBER = 19000000  # A recent block number
+FORK_URL = f"https://sepolia.infura.io/v3/{INFURA_KEY}"  # Using Sepolia testnet
+FORK_BLOCK_NUMBER = 5000000  # A recent Sepolia block number
 
-# Path to the compiled contract JSON (this will be generated when we compile the contract)
+# Path to the compiled contract JSON
 CONTRACT_JSON_PATH = "thefoundry/out/NFTBundleMarket.sol/NFTBundleMarket.json"
-
-# We need to compile the MockERC721 contract first
 MOCK_NFT_JSON_PATH = "thefoundry/out/MockERC721.sol/MockERC721.json"
 
 class AnvilProcess:
-    """Manages the Anvil process for forking Ethereum mainnet"""
+    """Manages the Anvil process for forking Ethereum Sepolia testnet"""
     def __init__(self, fork_url=None, fork_block_number=None, port=8545):
         self.fork_url = fork_url
         self.fork_block_number = fork_block_number
@@ -72,8 +70,8 @@ class AnvilProcess:
             print("Anvil stopped")
 
 
-class EthereumSimulation:
-    """Simulation for the NFT Bundle Marketplace on Ethereum"""
+class SepoliaSimulation:
+    """Simulation for the NFT Bundle Marketplace on Ethereum Sepolia"""
     def __init__(self, web3_provider):
         self.w3 = Web3(web3_provider)
         
@@ -90,7 +88,6 @@ class EthereumSimulation:
             # For Anvil, we can derive private keys using a known pattern
             # Anvil's default accounts use a known pattern for private keys
             # The first account has key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-            # We'll use these hardcoded private keys for the first 10 accounts
             if addr.lower() == '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'.lower():
                 self.accounts.append(Account.from_key('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'))
             elif addr.lower() == '0x70997970c51812dc3a010c7d01b50e0d17dc79c8'.lower():
@@ -101,16 +98,6 @@ class EthereumSimulation:
                 self.accounts.append(Account.from_key('0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6'))
             elif addr.lower() == '0x15d34aaf54267db7d7c367839aaf71a00a2c6a65'.lower():
                 self.accounts.append(Account.from_key('0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a'))
-            elif addr.lower() == '0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc'.lower():
-                self.accounts.append(Account.from_key('0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba'))
-            elif addr.lower() == '0x976ea74026e726554db657fa54763abd0c3a0aa9'.lower():
-                self.accounts.append(Account.from_key('0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e'))
-            elif addr.lower() == '0x14dc79964da2c08b23698b3d3cc7ca32193d9955'.lower():
-                self.accounts.append(Account.from_key('0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356'))
-            elif addr.lower() == '0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f'.lower():
-                self.accounts.append(Account.from_key('0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97'))
-            elif addr.lower() == '0xa0ee7a142d267c1f36714e4a8f75612f20a79720'.lower():
-                self.accounts.append(Account.from_key('0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6'))
             else:
                 print(f"Warning: No known private key for address {addr}")
         
@@ -129,6 +116,17 @@ class EthereumSimulation:
         # Counters for IDs (to handle event log issues)
         self.current_item_id = 0
         self.current_bundle_id = 0
+        
+        # Store deployed contract addresses and other simulation data
+        self.simulation_data = {
+            "marketplace_address": None,
+            "nft_address": None,
+            "accounts": [account.address for account in self.accounts],
+            "nfts": [],
+            "bundles": [],
+            "almost_full_bundle": None,
+            "almost_purchased_bundle": None
+        }
         
     def load_contract(self, contract_json_path, address=None):
         """Load a contract from its compiled JSON file"""
@@ -204,11 +202,12 @@ class EthereumSimulation:
             try:
                 self.mock_nft = self.deploy_contract(
                     mock_nft_contract, 
-                    "MockNFT", 
-                    "MNFT",
+                    "SepoliaNFT", 
+                    "SNFT",
                     from_account=self.accounts[0]
                 )
                 print(f"MockNFT deployed at: {self.mock_nft.address}")
+                self.simulation_data["nft_address"] = self.mock_nft.address
             except Exception as e:
                 print(f"Error deploying MockNFT contract: {e}")
                 raise
@@ -220,6 +219,7 @@ class EthereumSimulation:
                     from_account=self.accounts[0]
                 )
                 print(f"NFTBundleMarket deployed at: {self.nft_bundle_market.address}")
+                self.simulation_data["marketplace_address"] = self.nft_bundle_market.address
             except Exception as e:
                 print(f"Error deploying NFTBundleMarket contract: {e}")
                 raise
@@ -239,15 +239,22 @@ class EthereumSimulation:
             # For older versions
             return self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
     
-    def mint_nfts(self, to_account, count=3):
+    def mint_nfts(self, to_account, count=3, start_id=0, names=None):
         """Mint NFTs to a specific account"""
         nfts = []
+        
+        if names is None:
+            names = [f"Artwork {i+start_id}" for i in range(count)]
+        
         for i in range(count):
+            token_id = i + start_id
+            name = names[i] if i < len(names) else f"Artwork {token_id}"
+            
             # Mint NFT
             txn = self.mock_nft.functions.mint(
                 to_account.address, 
-                i, 
-                f"Artwork {i}"
+                token_id, 
+                name
             ).build_transaction({
                 'from': self.accounts[0].address,
                 'nonce': self.w3.eth.get_transaction_count(self.accounts[0].address),
@@ -259,7 +266,14 @@ class EthereumSimulation:
             txn_hash = self._send_raw_transaction(signed_txn)
             self.w3.eth.wait_for_transaction_receipt(txn_hash)
             
-            nfts.append(i)  # Store token ID
+            nfts.append(token_id)  # Store token ID
+            
+            # Add to simulation data
+            self.simulation_data["nfts"].append({
+                "token_id": token_id,
+                "name": name,
+                "owner": to_account.address
+            })
             
         print(f"Minted {count} NFTs to {to_account.address}")
         return nfts
@@ -317,7 +331,7 @@ class EthereumSimulation:
         print(f"Listed NFT with token ID {token_id} as item ID {item_id}")
         return item_id
     
-    def create_bundle(self, seller_account, item_ids, price, required_buyers):
+    def create_bundle(self, seller_account, item_ids, price, required_buyers, name=None):
         """Create a bundle of NFTs"""
         txn = self.nft_bundle_market.functions.createBundle(
             item_ids,
@@ -349,6 +363,19 @@ class EthereumSimulation:
             self.current_bundle_id += 1
             bundle_id = self.current_bundle_id
         
+        bundle_info = {
+            "id": bundle_id,
+            "name": name if name else f"Bundle {bundle_id}",
+            "item_ids": item_ids,
+            "price": price,
+            "required_buyers": required_buyers,
+            "seller": seller_account.address,
+            "interested_buyers": [],
+            "completed": False
+        }
+        
+        self.simulation_data["bundles"].append(bundle_info)
+        
         print(f"Created bundle {bundle_id} with {len(item_ids)} items for {price} ETH")
         return bundle_id
     
@@ -367,6 +394,16 @@ class EthereumSimulation:
         signed_txn = buyer_account.sign_transaction(txn)
         txn_hash = self._send_raw_transaction(signed_txn)
         self.w3.eth.wait_for_transaction_receipt(txn_hash)
+        
+        # Update simulation data
+        for bundle in self.simulation_data["bundles"]:
+            if bundle["id"] == bundle_id:
+                if buyer_account.address not in bundle["interested_buyers"]:
+                    bundle["interested_buyers"].append({
+                        "address": buyer_account.address,
+                        "items": item_ids
+                    })
+                break
         
         print(f"Buyer {buyer_account.address} expressed interest in bundle {bundle_id}")
     
@@ -407,6 +444,14 @@ class EthereumSimulation:
         txn_hash = self._send_raw_transaction(signed_txn)
         self.w3.eth.wait_for_transaction_receipt(txn_hash)
         
+        # Update simulation data
+        for bundle in self.simulation_data["bundles"]:
+            if bundle["id"] == bundle_id:
+                bundle["shapley_values"] = {
+                    buyers[i]: values[i] for i in range(len(buyers))
+                }
+                break
+        
         print(f"Shapley values set for bundle {bundle_id}")
     
     def complete_bundle_purchase(self, buyer_account, bundle_id, value):
@@ -423,7 +468,27 @@ class EthereumSimulation:
         
         signed_txn = buyer_account.sign_transaction(txn)
         txn_hash = self._send_raw_transaction(signed_txn)
-        self.w3.eth.wait_for_transaction_receipt(txn_hash)
+        receipt = self.w3.eth.wait_for_transaction_receipt(txn_hash)
+        
+        # Update simulation data
+        for bundle in self.simulation_data["bundles"]:
+            if bundle["id"] == bundle_id:
+                for buyer in bundle["interested_buyers"]:
+                    if buyer["address"] == buyer_account.address:
+                        buyer["paid"] = True
+                
+                # Check if all buyers have paid
+                all_paid = all(buyer.get("paid", False) for buyer in bundle["interested_buyers"])
+                if all_paid:
+                    bundle["completed"] = True
+                    
+                    # Update NFT ownership
+                    for buyer in bundle["interested_buyers"]:
+                        for item_id in buyer["items"]:
+                            for nft in self.simulation_data["nfts"]:
+                                if nft["token_id"] == item_id:
+                                    nft["owner"] = buyer["address"]
+                break
         
         print(f"Buyer {buyer_account.address} completed purchase for bundle {bundle_id}")
     
@@ -440,15 +505,6 @@ class EthereumSimulation:
             'completed': bundle_info[5]
         }
     
-    def get_buyer_interests(self, bundle_id, buyer_address):
-        """Get the items a buyer is interested in for a specific bundle"""
-        return self.nft_bundle_market.functions.getBuyerInterests(bundle_id, buyer_address).call()
-    
-    def get_shapley_value(self, bundle_id, buyer_address):
-        """Get the Shapley value for a buyer in a bundle"""
-        value_wei = self.nft_bundle_market.functions.shapleyValues(bundle_id, buyer_address).call()
-        return self.w3.from_wei(value_wei, 'ether')
-    
     def calculate_shapley_values(self, bundle_id, bundle_price):
         """Calculate Shapley values for a bundle using our ShapleyCalculator"""
         bundle_info = self.get_bundle_info(bundle_id)
@@ -456,7 +512,7 @@ class EthereumSimulation:
         # Get buyer interests
         buyer_interests = {}
         for buyer in bundle_info['interested_buyers']:
-            items = self.get_buyer_interests(bundle_id, buyer)
+            items = self.nft_bundle_market.functions.getBuyerInterests(bundle_id, buyer).call()
             # Use lowercase addresses as keys for consistency
             buyer_interests[buyer.lower()] = items
         
@@ -479,11 +535,17 @@ class EthereumSimulation:
                     result[buyer] = equal_share
         
         return result
+    
+    def save_simulation_data(self, filename="sepolia_simulation_data.json"):
+        """Save simulation data to a JSON file"""
+        with open(filename, 'w') as f:
+            json.dump(self.simulation_data, f, indent=2)
+        print(f"Simulation data saved to {filename}")
 
 
-def run_ethereum_simulation():
-    """Run a full simulation of the NFT bundle marketplace on Ethereum"""
-    print("=== Starting NFT Bundle Marketplace Ethereum Simulation ===")
+def setup_sepolia_environment():
+    """Set up a simulated Sepolia environment with NFTs and bundles in different states"""
+    print("=== Starting NFT Bundle Marketplace Sepolia Simulation ===")
     
     # Start Anvil process
     anvil = AnvilProcess(fork_url=FORK_URL, fork_block_number=FORK_BLOCK_NUMBER, port=ANVIL_PORT)
@@ -493,7 +555,7 @@ def run_ethereum_simulation():
         
         # Connect to the local Ethereum node
         provider = Web3.HTTPProvider(f"http://localhost:{ANVIL_PORT}")
-        simulation = EthereumSimulation(provider)
+        simulation = SepoliaSimulation(provider)
         
         # Set up contracts
         if not simulation.setup_contracts():
@@ -505,322 +567,162 @@ def run_ethereum_simulation():
         alice = simulation.accounts[1]
         bob = simulation.accounts[2]
         charlie = simulation.accounts[3]
+        dave = simulation.accounts[4]
         
         print("\n=== Accounts ===")
         print(f"Seller: {seller.address}")
         print(f"Alice: {alice.address}")
         print(f"Bob: {bob.address}")
         print(f"Charlie: {charlie.address}")
+        print(f"Dave: {dave.address}")
+        
+        # Create NFT collections with themed names
+        art_collection_names = ["Sunset Horizon", "Mountain Peak", "Ocean Wave", "Forest Path", "Desert Dunes"]
+        game_collection_names = ["Dragon Slayer", "Magic Wand", "Ancient Sword", "Mystic Shield", "Golden Armor"]
+        music_collection_names = ["Vinyl Record", "Electric Guitar", "Grand Piano", "Drum Set", "Saxophone"]
         
         # Mint NFTs to seller
-        token_ids = simulation.mint_nfts(seller, count=3)
+        art_tokens = simulation.mint_nfts(seller, count=5, start_id=0, names=art_collection_names)
+        game_tokens = simulation.mint_nfts(seller, count=5, start_id=100, names=game_collection_names)
+        music_tokens = simulation.mint_nfts(seller, count=5, start_id=200, names=music_collection_names)
         
         # Approve NFTs for marketplace
-        simulation.approve_nfts(seller, token_ids)
+        simulation.approve_nfts(seller, art_tokens + game_tokens + music_tokens)
         
         # List NFTs in marketplace
-        item_ids = []
-        for token_id in token_ids:
+        art_item_ids = []
+        for token_id in art_tokens:
             item_id = simulation.list_nft(seller, token_id)
-            item_ids.append(item_id)
+            art_item_ids.append(item_id)
+        
+        game_item_ids = []
+        for token_id in game_tokens:
+            item_id = simulation.list_nft(seller, token_id)
+            game_item_ids.append(item_id)
+        
+        music_item_ids = []
+        for token_id in music_tokens:
+            item_id = simulation.list_nft(seller, token_id)
+            music_item_ids.append(item_id)
         
         print("\n=== NFTs Listed ===")
-        print(f"Item IDs: {item_ids}")
+        print(f"Art Collection Item IDs: {art_item_ids}")
+        print(f"Game Collection Item IDs: {game_item_ids}")
+        print(f"Music Collection Item IDs: {music_item_ids}")
         
-        # Create bundle with all NFTs
-        bundle_price = 0.1  # 0.1 ETH
-        bundle_id = simulation.create_bundle(seller, item_ids, bundle_price, 3)
+        # Create bundles with different themes
+        art_bundle_id = simulation.create_bundle(seller, art_item_ids, 0.15, 3, "Art Collection Bundle")
+        game_bundle_id = simulation.create_bundle(seller, game_item_ids, 0.2, 3, "Game Items Bundle")
+        music_bundle_id = simulation.create_bundle(seller, music_item_ids, 0.18, 3, "Music Collection Bundle")
         
-        print("\n=== Bundle Created ===")
-        print(f"Bundle ID: {bundle_id}")
-        print(f"Bundle Price: {bundle_price} ETH")
-        
-        # Buyers express interest
-        simulation.express_interest(alice, bundle_id, [item_ids[0], item_ids[1]])
-        simulation.express_interest(bob, bundle_id, [item_ids[1], item_ids[2]])
-        simulation.express_interest(charlie, bundle_id, [item_ids[0], item_ids[2]])
-        
-        print("\n=== Buyers Expressed Interest ===")
-        
-        # Request attestation
-        simulation.request_attestation(alice, bundle_id)
-        
-        # Calculate Shapley values
-        shapley_values = simulation.calculate_shapley_values(bundle_id, bundle_price)
-        
-        print("\n=== Shapley Values Calculated ===")
-        for buyer, value in shapley_values.items():
-            print(f"{buyer}: {value} ETH")
-        
-        # Set Shapley values in the contract
-        buyer_addresses = [alice.address, bob.address, charlie.address]
-        values = [shapley_values[addr] for addr in buyer_addresses]
-        
-        simulation.set_shapley_values(seller, bundle_id, buyer_addresses, values)
-        
-        print("\n=== Shapley Values Set in Contract ===")
-        
-        # Complete bundle purchase
-        simulation.complete_bundle_purchase(alice, bundle_id, shapley_values[alice.address])
-        simulation.complete_bundle_purchase(bob, bundle_id, shapley_values[bob.address])
-        simulation.complete_bundle_purchase(charlie, bundle_id, shapley_values[charlie.address])
-        
-        print("\n=== Bundle Purchase Completed ===")
-        
-        # Get final bundle state
-        final_bundle_info = simulation.get_bundle_info(bundle_id)
-        
-        print("\n=== Final Bundle State ===")
-        print(f"Bundle ID: {bundle_id}")
-        print(f"Active: {final_bundle_info['active']}")
-        print(f"Completed: {final_bundle_info['completed']}")
-        
-        print("\n=== Simulation Complete ===")
-        
-    except Exception as e:
-        print(f"Error in simulation: {e}")
-    finally:
-        # Stop Anvil process
-        anvil.stop()
-
-
-def run_complex_simulation():
-    """Run a more complex simulation of the NFT bundle marketplace on Ethereum with multiple bundles"""
-    print("=== Starting Complex NFT Bundle Marketplace Ethereum Simulation ===")
-    print("=== This simulation demonstrates the benefits of cooperation through bundle pricing ===")
-    
-    # Start Anvil process
-    anvil = AnvilProcess(fork_url=FORK_URL, fork_block_number=FORK_BLOCK_NUMBER, port=ANVIL_PORT)
-    
-    try:
-        anvil.start()
-        
-        # Connect to the local Ethereum node
-        provider = Web3.HTTPProvider(f"http://localhost:{ANVIL_PORT}")
-        simulation = EthereumSimulation(provider)
-        
-        # Set up contracts
-        if not simulation.setup_contracts():
-            print("Failed to set up contracts. Exiting simulation.")
-            return
-        
-        # Get accounts for simulation
-        seller = simulation.accounts[0]  # Contract deployer/owner
-        alice = simulation.accounts[1]
-        bob = simulation.accounts[2]
-        charlie = simulation.accounts[3]
-        
-        print("\n=== Accounts ===")
-        print(f"Seller: {seller.address}")
-        print(f"Alice: {alice.address}")
-        print(f"Bob: {bob.address}")
-        print(f"Charlie: {charlie.address}")
-        
-        # Mint NFTs to seller - we'll call them A, B, C for clarity
-        token_ids = simulation.mint_nfts(seller, count=3)
-        
-        # Approve NFTs for marketplace
-        simulation.approve_nfts(seller, token_ids)
-        
-        # List NFTs in marketplace
-        item_ids = []
-        for token_id in token_ids:
-            item_id = simulation.list_nft(seller, token_id)
-            item_ids.append(item_id)
-        
-        # For clarity, let's name our NFTs
-        nft_a, nft_b, nft_c = item_ids
-        
-        print("\n=== NFTs Listed ===")
-        print(f"NFT A (Item ID): {nft_a}")
-        print(f"NFT B (Item ID): {nft_b}")
-        print(f"NFT C (Item ID): {nft_c}")
-        
-        # Create bundles with different combinations and prices that incentivize cooperation
-        # Individual NFT prices (higher)
-        price_a = 0.05  # 0.05 ETH
-        price_b = 0.05  # 0.05 ETH
-        price_c = 0.05  # 0.05 ETH
-        
-        # Pair bundle prices (lower than sum of individuals)
-        price_ab = 0.08  # 0.08 ETH (instead of 0.10)
-        price_bc = 0.08  # 0.08 ETH (instead of 0.10)
-        price_ac = 0.08  # 0.08 ETH (instead of 0.10)
-        
-        # Triple bundle price (even lower)
-        price_abc = 0.10  # 0.10 ETH (instead of 0.15)
-        
-        # Create all bundles
-        bundle_a = simulation.create_bundle(seller, [nft_a], price_a, 1)
-        bundle_b = simulation.create_bundle(seller, [nft_b], price_b, 1)
-        bundle_c = simulation.create_bundle(seller, [nft_c], price_c, 1)
-        bundle_ab = simulation.create_bundle(seller, [nft_a, nft_b], price_ab, 2)
-        bundle_bc = simulation.create_bundle(seller, [nft_b, nft_c], price_bc, 2)
-        bundle_ac = simulation.create_bundle(seller, [nft_a, nft_c], price_ac, 2)
-        bundle_abc = simulation.create_bundle(seller, [nft_a, nft_b, nft_c], price_abc, 3)
+        # Create a mixed bundle
+        mixed_items = [art_item_ids[0], game_item_ids[1], music_item_ids[2]]
+        mixed_bundle_id = simulation.create_bundle(seller, mixed_items, 0.1, 3, "Mixed Collection Bundle")
         
         print("\n=== Bundles Created ===")
-        print(f"Bundle A: ID {bundle_a}, Price {price_a} ETH")
-        print(f"Bundle B: ID {bundle_b}, Price {price_b} ETH")
-        print(f"Bundle C: ID {bundle_c}, Price {price_c} ETH")
-        print(f"Bundle AB: ID {bundle_ab}, Price {price_ab} ETH (Discount: {price_a + price_b - price_ab} ETH)")
-        print(f"Bundle BC: ID {bundle_bc}, Price {price_bc} ETH (Discount: {price_b + price_c - price_bc} ETH)")
-        print(f"Bundle AC: ID {bundle_ac}, Price {price_ac} ETH (Discount: {price_a + price_c - price_ac} ETH)")
-        print(f"Bundle ABC: ID {bundle_abc}, Price {price_abc} ETH (Discount: {price_a + price_b + price_c - price_abc} ETH)")
+        print(f"Art Bundle ID: {art_bundle_id}")
+        print(f"Game Bundle ID: {game_bundle_id}")
+        print(f"Music Bundle ID: {music_bundle_id}")
+        print(f"Mixed Bundle ID: {mixed_bundle_id}")
         
-        # Scenario 1: Individual purchases (no cooperation)
-        print("\n=== Scenario 1: Individual Purchases (No Cooperation) ===")
+        # Set up a 2/3 almost full bundle (for interest)
+        # This bundle has 2 out of 3 required buyers expressing interest
+        simulation.express_interest(alice, art_bundle_id, [art_item_ids[0], art_item_ids[1]])
+        simulation.express_interest(bob, art_bundle_id, [art_item_ids[2], art_item_ids[3]])
         
-        # Alice buys NFT A
-        simulation.express_interest(alice, bundle_a, [nft_a])
-        simulation.request_attestation(alice, bundle_a)
-        shapley_values = simulation.calculate_shapley_values(bundle_a, price_a)
-        simulation.set_shapley_values(seller, bundle_a, [alice.address], [shapley_values[alice.address]])
-        simulation.complete_bundle_purchase(alice, bundle_a, shapley_values[alice.address])
+        # Store this as our almost full bundle
+        simulation.simulation_data["almost_full_bundle"] = art_bundle_id
         
-        # Bob buys NFT B
-        simulation.express_interest(bob, bundle_b, [nft_b])
-        simulation.request_attestation(bob, bundle_b)
-        shapley_values = simulation.calculate_shapley_values(bundle_b, price_b)
-        simulation.set_shapley_values(seller, bundle_b, [bob.address], [shapley_values[bob.address]])
-        simulation.complete_bundle_purchase(bob, bundle_b, shapley_values[bob.address])
+        print("\n=== Almost Full Bundle Setup ===")
+        print(f"Bundle ID: {art_bundle_id}")
+        print(f"Alice is interested in items: {[art_item_ids[0], art_item_ids[1]]}")
+        print(f"Bob is interested in items: {[art_item_ids[2], art_item_ids[3]]}")
+        print(f"Waiting for one more buyer to express interest")
         
-        # Charlie buys NFT C
-        simulation.express_interest(charlie, bundle_c, [nft_c])
-        simulation.request_attestation(charlie, bundle_c)
-        shapley_values = simulation.calculate_shapley_values(bundle_c, price_c)
-        simulation.set_shapley_values(seller, bundle_c, [charlie.address], [shapley_values[charlie.address]])
-        simulation.complete_bundle_purchase(charlie, bundle_c, shapley_values[charlie.address])
+        # Set up a 2/3 almost purchased bundle
+        # This bundle has all 3 required buyers expressing interest, and 2 have completed purchase
+        simulation.express_interest(alice, game_bundle_id, [game_item_ids[0], game_item_ids[1]])
+        simulation.express_interest(bob, game_bundle_id, [game_item_ids[2], game_item_ids[3]])
+        simulation.express_interest(charlie, game_bundle_id, [game_item_ids[1], game_item_ids[4]])
         
-        print(f"Total cost without cooperation: {price_a + price_b + price_c} ETH")
+        # Request attestation and set Shapley values
+        simulation.request_attestation(alice, game_bundle_id)
         
-        # Scenario 2: Pair cooperation (Alice and Bob cooperate)
-        print("\n=== Scenario 2: Pair Cooperation (Alice and Bob) ===")
+        # Calculate and set
+        # Calculate and set Shapley values
+        bundle_price = 0.2  # Game bundle price
+        shapley_values = simulation.calculate_shapley_values(game_bundle_id, bundle_price)
         
-        # Mint new NFTs for this scenario
-        new_token_ids = simulation.mint_nfts(seller, count=3)
-        simulation.approve_nfts(seller, new_token_ids)
+        buyer_addresses = [alice.address, bob.address, charlie.address]
+        values = [shapley_values.get(addr, bundle_price/3) for addr in buyer_addresses]
         
-        # List new NFTs
-        new_item_ids = []
-        for token_id in new_token_ids:
-            item_id = simulation.list_nft(seller, token_id)
-            new_item_ids.append(item_id)
+        simulation.set_shapley_values(seller, game_bundle_id, buyer_addresses, values)
         
-        new_nft_a, new_nft_b, new_nft_c = new_item_ids
+        # Complete purchase for 2 out of 3 buyers
+        simulation.complete_bundle_purchase(alice, game_bundle_id, values[0])
+        simulation.complete_bundle_purchase(bob, game_bundle_id, values[1])
         
-        # Create new bundles
-        new_bundle_ab = simulation.create_bundle(seller, [new_nft_a, new_nft_b], price_ab, 2)
-        new_bundle_c = simulation.create_bundle(seller, [new_nft_c], price_c, 1)
+        # Store this as our almost purchased bundle
+        simulation.simulation_data["almost_purchased_bundle"] = game_bundle_id
         
-        # Alice and Bob express interest in bundle AB
-        simulation.express_interest(alice, new_bundle_ab, [new_nft_a])
-        simulation.express_interest(bob, new_bundle_ab, [new_nft_b])
+        print("\n=== Almost Purchased Bundle Setup ===")
+        print(f"Bundle ID: {game_bundle_id}")
+        print(f"Alice has paid her share: {values[0]} ETH")
+        print(f"Bob has paid his share: {values[1]} ETH")
+        print(f"Charlie still needs to pay: {values[2]} ETH")
         
-        # Calculate Shapley values for bundle AB
-        simulation.request_attestation(alice, new_bundle_ab)
-        shapley_values_ab = simulation.calculate_shapley_values(new_bundle_ab, price_ab)
+        # Set up a fully completed bundle for reference
+        simulation.express_interest(alice, music_bundle_id, [music_item_ids[0], music_item_ids[1]])
+        simulation.express_interest(bob, music_bundle_id, [music_item_ids[2], music_item_ids[3]])
+        simulation.express_interest(charlie, music_bundle_id, [music_item_ids[1], music_item_ids[4]])
         
-        print("Shapley Values for Bundle AB:")
-        for buyer, value in shapley_values_ab.items():
-            print(f"{buyer}: {value} ETH")
+        # Request attestation and set Shapley values
+        simulation.request_attestation(alice, music_bundle_id)
         
-        # Set Shapley values and complete purchase
-        # We need to ensure we have values for both buyers
-        alice_value = shapley_values_ab.get(alice.address, price_ab / 2)  # Default to half if not found
-        bob_value = shapley_values_ab.get(bob.address, price_ab / 2)      # Default to half if not found
+        # Calculate and set Shapley values
+        bundle_price = 0.18  # Music bundle price
+        shapley_values = simulation.calculate_shapley_values(music_bundle_id, bundle_price)
         
-        # If we don't have values for both buyers in the dictionary, recalculate manually
-        if alice.address not in shapley_values_ab or bob.address not in shapley_values_ab:
-            print("Recalculating Shapley values manually...")
-            # For a pair with equal interests, Shapley values should be equal
-            alice_value = price_ab / 2
-            bob_value = price_ab / 2
-            print(f"Manual Shapley Values: Alice: {alice_value} ETH, Bob: {bob_value} ETH")
+        buyer_addresses = [alice.address, bob.address, charlie.address]
+        values = [shapley_values.get(addr, bundle_price/3) for addr in buyer_addresses]
         
-        simulation.set_shapley_values(seller, new_bundle_ab, [alice.address, bob.address], 
-                                     [alice_value, bob_value])
-        simulation.complete_bundle_purchase(alice, new_bundle_ab, alice_value)
-        simulation.complete_bundle_purchase(bob, new_bundle_ab, bob_value)
+        simulation.set_shapley_values(seller, music_bundle_id, buyer_addresses, values)
         
-        # Charlie buys NFT C individually
-        simulation.express_interest(charlie, new_bundle_c, [new_nft_c])
-        simulation.request_attestation(charlie, new_bundle_c)
-        shapley_values_c = simulation.calculate_shapley_values(new_bundle_c, price_c)
+        # Complete purchase for all buyers
+        simulation.complete_bundle_purchase(alice, music_bundle_id, values[0])
+        simulation.complete_bundle_purchase(bob, music_bundle_id, values[1])
+        simulation.complete_bundle_purchase(charlie, music_bundle_id, values[2])
         
-        # Ensure we have a value for Charlie
-        charlie_value = shapley_values_c.get(charlie.address, price_c)  # Default to full price if not found
+        print("\n=== Completed Bundle Setup ===")
+        print(f"Bundle ID: {music_bundle_id}")
+        print(f"All buyers have paid their shares")
+        print(f"NFTs have been distributed to the buyers")
         
-        simulation.set_shapley_values(seller, new_bundle_c, [charlie.address], [charlie_value])
-        simulation.complete_bundle_purchase(charlie, new_bundle_c, charlie_value)
+        # Set up the mixed bundle with just one interested buyer
+        simulation.express_interest(dave, mixed_bundle_id, [mixed_items[0], mixed_items[2]])
         
-        print(f"Total cost with pair cooperation: {price_ab + price_c} ETH")
-        print(f"Savings compared to individual purchases: {price_a + price_b + price_c - (price_ab + price_c)} ETH")
+        print("\n=== Mixed Bundle Setup ===")
+        print(f"Bundle ID: {mixed_bundle_id}")
+        print(f"Dave is interested in items: {[mixed_items[0], mixed_items[2]]}")
+        print(f"Waiting for more buyers to express interest")
         
-        # Scenario 3: Full cooperation (All three buyers)
-        print("\n=== Scenario 3: Full Cooperation (All Three Buyers) ===")
+        # Save all simulation data to a file
+        simulation.save_simulation_data()
         
-        # Mint new NFTs for this scenario
-        final_token_ids = simulation.mint_nfts(seller, count=3)
-        simulation.approve_nfts(seller, final_token_ids)
+        print("\n=== Simulation Environment Ready ===")
+        print("You can now connect your frontend to the local Anvil node")
+        print(f"Marketplace Contract: {simulation.simulation_data['marketplace_address']}")
+        print(f"NFT Contract: {simulation.simulation_data['nft_address']}")
+        print(f"Almost Full Bundle ID (2/3 interested): {simulation.simulation_data['almost_full_bundle']}")
+        print(f"Almost Purchased Bundle ID (2/3 paid): {simulation.simulation_data['almost_purchased_bundle']}")
         
-        # List new NFTs
-        final_item_ids = []
-        for token_id in final_token_ids:
-            item_id = simulation.list_nft(seller, token_id)
-            final_item_ids.append(item_id)
-        
-        final_nft_a, final_nft_b, final_nft_c = final_item_ids
-        
-        # Create the ABC bundle
-        final_bundle_abc = simulation.create_bundle(seller, [final_nft_a, final_nft_b, final_nft_c], price_abc, 3)
-        
-        # All buyers express interest
-        simulation.express_interest(alice, final_bundle_abc, [final_nft_a])
-        simulation.express_interest(bob, final_bundle_abc, [final_nft_b])
-        simulation.express_interest(charlie, final_bundle_abc, [final_nft_c])
-        
-        # Calculate Shapley values
-        simulation.request_attestation(alice, final_bundle_abc)
-        shapley_values_abc = simulation.calculate_shapley_values(final_bundle_abc, price_abc)
-        
-        print("Shapley Values for Bundle ABC:")
-        for buyer, value in shapley_values_abc.items():
-            print(f"{buyer}: {value} ETH")
-        
-        # Ensure we have values for all buyers
-        alice_value_abc = shapley_values_abc.get(alice.address, price_abc / 3)  # Default to equal share if not found
-        bob_value_abc = shapley_values_abc.get(bob.address, price_abc / 3)      # Default to equal share if not found
-        charlie_value_abc = shapley_values_abc.get(charlie.address, price_abc / 3)  # Default to equal share if not found
-        
-        # If we don't have values for all buyers in the dictionary, recalculate manually
-        if alice.address not in shapley_values_abc or bob.address not in shapley_values_abc or charlie.address not in shapley_values_abc:
-            print("Recalculating Shapley values manually...")
-            # For three buyers with equal interests, Shapley values should be equal
-            alice_value_abc = price_abc / 3
-            bob_value_abc = price_abc / 3
-            charlie_value_abc = price_abc / 3
-            print(f"Manual Shapley Values: Alice: {alice_value_abc} ETH, Bob: {bob_value_abc} ETH, Charlie: {charlie_value_abc} ETH")
-        
-        # Set Shapley values and complete purchase
-        simulation.set_shapley_values(seller, final_bundle_abc, 
-                                     [alice.address, bob.address, charlie.address],
-                                     [alice_value_abc, bob_value_abc, charlie_value_abc])
-        
-        simulation.complete_bundle_purchase(alice, final_bundle_abc, alice_value_abc)
-        simulation.complete_bundle_purchase(bob, final_bundle_abc, bob_value_abc)
-        simulation.complete_bundle_purchase(charlie, final_bundle_abc, charlie_value_abc)
-        
-        print(f"Total cost with full cooperation: {price_abc} ETH")
-        print(f"Savings compared to individual purchases: {price_a + price_b + price_c - price_abc} ETH")
-        print(f"Savings compared to pair cooperation: {price_ab + price_c - price_abc} ETH")
-        
-        print("\n=== Simulation Complete ===")
-        print("=== Summary of Cooperation Benefits ===")
-        print(f"Individual purchases total cost: {price_a + price_b + price_c} ETH")
-        print(f"Pair cooperation (AB + C) total cost: {price_ab + price_c} ETH")
-        print(f"Full cooperation (ABC) total cost: {price_abc} ETH")
-        print(f"Maximum savings through cooperation: {price_a + price_b + price_c - price_abc} ETH")
+        # Keep the Anvil process running
+        print("\nPress Ctrl+C to stop the simulation...")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nStopping simulation...")
         
     except Exception as e:
         print(f"Error in simulation: {e}")
@@ -831,7 +733,10 @@ def run_complex_simulation():
         anvil.stop()
 
 
+def run_sepolia_simulation():
+    """Run the Sepolia simulation"""
+    setup_sepolia_environment()
+
+
 if __name__ == "__main__":
-    # Uncomment the simulation you want to run
-    # run_ethereum_simulation()  # Original simple simulation
-    run_complex_simulation()  # Complex simulation with multiple bundles 
+    run_sepolia_simulation()
