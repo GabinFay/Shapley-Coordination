@@ -148,6 +148,10 @@ class NFTBundleSDK:
             seller = item_info[1]
             sold = item_info[3]
             
+            # Check if this is a valid NFT (address should not be zero)
+            if nft_contract == "0x0000000000000000000000000000000000000000" and seller == "0x0000000000000000000000000000000000000000":
+                return None
+            
             # Get NFT name
             try:
                 name = self.mock_nft.functions.tokenURI(token_id).call()
@@ -198,6 +202,10 @@ class NFTBundleSDK:
             name = bundle_info[7]
             description = bundle_info[8]
             # Ignore placeholder value at bundle_info[9]
+            
+            # Check if this is a valid bundle (price should not be zero for a valid bundle)
+            if len(item_ids) == 0 and int(bundle_info[1]) == 0 and required_buyers == 0:
+                return None
             
             # If name is empty, create a default name
             if not name:
@@ -286,6 +294,15 @@ class NFTBundleSDK:
     def get_buyer_interest(self, bundle_id: int, buyer: str) -> Optional[BuyerInterest]:
         """Get a specific buyer's interest in a bundle"""
         try:
+            # Check if bundle exists first
+            bundle = self.get_bundle(bundle_id)
+            if bundle is None:
+                return None
+                
+            # Check if buyer is interested in this bundle
+            if buyer.lower() not in [b.lower() for b in bundle.interested_buyers]:
+                return None
+                
             # Get items of interest
             items_of_interest = self.contract.functions.getBuyerInterests(bundle_id, buyer).call()
             
