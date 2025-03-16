@@ -58,6 +58,11 @@ contract NFTBundleMarketTest is Test {
         uint256 item2 = market.listNFT(address(nft), 2);
         uint256 item3 = market.listNFT(address(nft), 3);
         
+        // Verify NFTs are still owned by the seller
+        assertEq(nft.ownerOf(1), seller);
+        assertEq(nft.ownerOf(2), seller);
+        assertEq(nft.ownerOf(3), seller);
+        
         // Step 2: Seller creates a bundle
         uint256[] memory itemIds = new uint256[](3);
         itemIds[0] = item1;
@@ -235,14 +240,14 @@ contract NFTBundleMarketTest is Test {
         nft.setApprovalForAll(address(market), true);
         uint256 itemId = market.listNFT(address(nft), 1);
         
-        // Verify NFT is now owned by the marketplace
-        assertEq(nft.ownerOf(1), address(market));
+        // Verify NFT is still owned by the seller
+        assertEq(nft.ownerOf(1), seller);
         
-        // Seller withdraws the NFT
+        // Seller withdraws the NFT listing
         market.withdrawNFT(itemId);
         vm.stopPrank();
         
-        // Verify NFT is back with the seller
+        // Verify NFT is still with the seller
         assertEq(nft.ownerOf(1), seller);
         
         // Verify item is marked as sold (withdrawn)
@@ -371,5 +376,61 @@ contract NFTBundleMarketTest is Test {
         vm.prank(buyer2); // Not the TEE wallet
         vm.expectRevert("Not authorized");
         market.setShapleyValues(bundleId, buyers, values);
+    }
+    
+    function testMultipleBundlesWithSameNFT() public {
+        // Seller lists an NFT
+        vm.startPrank(seller);
+        nft.setApprovalForAll(address(market), true);
+        uint256 itemId = market.listNFT(address(nft), 1);
+        
+        // Create first bundle with the NFT
+        uint256[] memory itemIds1 = new uint256[](1);
+        itemIds1[0] = itemId;
+        uint256 bundleId1 = market.createBundle(itemIds1, 1 ether, 1);
+        
+        // Create second bundle with the same NFT
+        uint256[] memory itemIds2 = new uint256[](1);
+        itemIds2[0] = itemId;
+        uint256 bundleId2 = market.createBundle(itemIds2, 2 ether, 1);
+        vm.stopPrank();
+        
+        // Verify both bundles were created successfully
+        (
+            uint256[] memory bundleItems1,
+            uint256 price1,
+            ,
+            bool active1,
+            ,
+            ,
+            ,
+            ,
+            ,
+            
+        ) = market.getBundleInfo(bundleId1);
+        
+        (
+            uint256[] memory bundleItems2,
+            uint256 price2,
+            ,
+            bool active2,
+            ,
+            ,
+            ,
+            ,
+            ,
+            
+        ) = market.getBundleInfo(bundleId2);
+        
+        // Verify both bundles contain the same NFT
+        assertEq(bundleItems1[0], itemId);
+        assertEq(bundleItems2[0], itemId);
+        assertEq(price1, 1 ether);
+        assertEq(price2, 2 ether);
+        assertTrue(active1);
+        assertTrue(active2);
+        
+        // Verify the NFT is still owned by the seller
+        assertEq(nft.ownerOf(1), seller);
     }
 } 

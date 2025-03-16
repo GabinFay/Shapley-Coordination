@@ -79,6 +79,12 @@ def test_nft_bundle_lifecycle():
     w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Approved all NFTs for marketplace")
     
+    # Verify that the NFTs are still owned by the seller
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner before listing: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller"
+    
     # Step 4: List NFTs in marketplace
     print("\n=== Listing NFTs in Marketplace ===")
     item_ids = []
@@ -108,6 +114,12 @@ def test_nft_bundle_lifecycle():
         
         item_ids.append(item_id)
         print(f"Listed NFT with token ID {token_id} as item ID {item_id}")
+    
+    # Verify that the NFTs are still owned by the seller after listing
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner after listing: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller after listing"
     
     # Step 5: Create a bundle
     print("\n=== Creating Bundle ===")
@@ -145,6 +157,12 @@ def test_nft_bundle_lifecycle():
     print(f"Price: {bundle.price} ETH")
     print(f"Required buyers: {bundle.required_buyers}")
     print(f"Items: {bundle.item_ids}")
+    
+    # Verify that the NFTs are still owned by the seller after bundle creation
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner after bundle creation: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller after bundle creation"
     
     # Step 6: Buyers express interest
     print("\n=== Expressing Interests ===")
@@ -194,6 +212,12 @@ def test_nft_bundle_lifecycle():
     for interest in interests:
         print(f"Buyer {interest.buyer} is interested in items: {interest.items_of_interest}")
     
+    # Verify that the NFTs are still owned by the seller after expressing interest
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner after expressing interest: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller after expressing interest"
+    
     # Step 7: Request attestation
     print("\n=== Requesting Attestation ===")
     tx = marketplace.functions.requestAttestation(bundle_id).build_transaction({
@@ -232,6 +256,12 @@ def test_nft_bundle_lifecycle():
     for buyer in interested_buyers:
         shapley_value = marketplace.functions.getShapleyValue(bundle_id, buyer).call()
         print(f"Buyer {buyer} Shapley value: {w3.from_wei(shapley_value, 'ether')} ETH")
+    
+    # Verify that the NFTs are still owned by the seller after setting Shapley values
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner after setting Shapley values: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller after setting Shapley values"
     
     # Step 9: Buyers complete purchases
     print("\n=== Completing Purchases ===")
@@ -275,6 +305,12 @@ def test_nft_bundle_lifecycle():
     print(f"Bundle completed: {completed}")
     print(f"Paid count: {paid_count}")
     
+    # Verify that the NFTs are still owned by the seller after 2 buyers have paid
+    for token_id in token_ids:
+        owner = mock_nft.functions.ownerOf(token_id).call()
+        print(f"Token {token_id} owner after 2 buyers paid: {owner}")
+        assert owner.lower() == seller.address.lower(), f"Token {token_id} not owned by seller after 2 buyers paid"
+    
     # Buyer 3 completes purchase
     tx = marketplace.functions.completeBundlePurchase(bundle_id).build_transaction({
         'from': buyer3.address,
@@ -300,7 +336,7 @@ def test_nft_bundle_lifecycle():
     print(f"Bundle completed: {completed}")
     print(f"Paid count: {paid_count}")
     
-    # Check NFT ownership
+    # Check NFT ownership - now the NFTs should be transferred to the buyers
     for i, item_id in enumerate(item_ids):
         item_info = marketplace.functions.getItemInfo(item_id).call()
         token_id = item_info[2]

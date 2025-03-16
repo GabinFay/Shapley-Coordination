@@ -81,6 +81,16 @@ contract NFTBundleMarket is ERC721Holder, Ownable, ReentrancyGuard {
         console.log("Token ID:", _tokenId);
         console.log("Seller:", msg.sender);
         
+        // Verify the caller owns the NFT
+        require(IERC721(_nftContract).ownerOf(_tokenId) == msg.sender, "Not the owner of the NFT");
+        
+        // Verify the contract has approval to transfer the NFT
+        require(
+            IERC721(_nftContract).isApprovedForAll(msg.sender, address(this)) || 
+            IERC721(_nftContract).getApproved(_tokenId) == address(this),
+            "Contract not approved to transfer NFT"
+        );
+        
         _itemIds++;
         uint256 itemId = _itemIds;
         
@@ -90,22 +100,6 @@ contract NFTBundleMarket is ERC721Holder, Ownable, ReentrancyGuard {
             seller: msg.sender,
             sold: false
         });
-        
-        // Transfer NFT to contract (escrow)
-        try IERC721(_nftContract).safeTransferFrom(msg.sender, address(this), _tokenId) {
-            console.log("NFT transferred to contract");
-            console.log(_nftContract);
-            console.log(_tokenId);
-            console.log(msg.sender);
-            console.log(address(this));
-        } catch Error(string memory reason) {
-            console.log("NFT transfer failed:");
-            console.log(reason);
-            revert(string(abi.encodePacked("NFT transfer failed: ", reason)));
-        } catch {
-            console.log("NFT transfer failed: unknown error");
-            revert("NFT transfer failed: unknown error");
-        }
         
         emit NFTListed(itemId, _nftContract, _tokenId, msg.sender);
         console.log("New item ID:", itemId);
@@ -398,16 +392,16 @@ contract NFTBundleMarket is ERC721Holder, Ownable, ReentrancyGuard {
                         // Mark item as sold
                         item.sold = true;
                         
-                        // Transfer NFT to buyer
+                        // Transfer NFT from seller to buyer
                         try IERC721(item.nftContract).safeTransferFrom(
-                            address(this),
+                            item.seller,
                             buyer,
                             item.tokenId
                         ) {
                             console.log("NFT transferred to buyer");
                             console.log(item.nftContract);
                             console.log(item.tokenId);
-                            console.log(address(this));
+                            console.log(item.seller);
                             console.log(buyer);
                         } catch Error(string memory reason) {
                             console.log("NFT transfer failed for item:", itemId);
@@ -433,7 +427,7 @@ contract NFTBundleMarket is ERC721Holder, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows a seller to withdraw their NFT if it hasn't been sold
+     * @dev Allows a seller to withdraw their NFT listing if it hasn't been sold
      */
     function withdrawNFT(uint256 _itemId) external nonReentrant {
         console.log("withdrawNFT called");
@@ -450,31 +444,11 @@ contract NFTBundleMarket is ERC721Holder, Ownable, ReentrancyGuard {
         console.log("Item in active bundle:", inActiveBundle ? "true" : "false");
         require(!inActiveBundle, "Item is in an active bundle");
         
-        // Transfer NFT back to seller
-        try IERC721(item.nftContract).safeTransferFrom(
-            address(this),
-            msg.sender,
-            item.tokenId
-        ) {
-            console.log("NFT transferred back to seller");
-            console.log(address(this));
-            console.log(msg.sender);
-            console.log(item.nftContract);
-            console.log(item.tokenId);
-        } catch Error(string memory reason) {
-            console.log("NFT transfer back to seller failed:");
-            console.log(reason);
-            revert(string(abi.encodePacked("NFT transfer failed: ", reason)));
-        } catch {
-            console.log("NFT transfer back to seller failed: unknown error");
-            revert("NFT transfer failed: unknown error");
-        }
-        
         // Mark as withdrawn (not sold, but no longer available)
         item.sold = true;
         
         emit NFTWithdrawn(_itemId, msg.sender);
-        console.log("NFT withdrawn successfully");
+        console.log("NFT listing withdrawn successfully");
     }
     
     /**

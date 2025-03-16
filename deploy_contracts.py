@@ -186,11 +186,205 @@ class ContractDeployer:
                 print(f"Error deploying NFTBundleMarket contract: {e}")
                 raise
             
+            # Set up the marketplace with initial data
+            print("Setting up marketplace with initial data...")
+            self.setup_initial_marketplace_data()
+            
             print("Contracts deployed successfully")
             return True
         except Exception as e:
             print(f"Error deploying contracts: {e}")
             return False
+    
+    def setup_initial_marketplace_data(self):
+        """Set up initial marketplace data - mint NFTs and create bundles"""
+        seller = self.accounts[0]
+        
+        try:
+            # 1. Mint 5 NFTs for the seller
+            print("Minting NFTs for seller...")
+            nft_ids = []
+            nft_names = ["Cosmic Horizon", "Digital Dream", "Ethereal Whisper", "Quantum Pulse", "Virtual Echo"]
+            
+            for i in range(1, 6):
+                name = nft_names[i-1]
+                print(f"Minting NFT #{i}: {name}")
+                tx = self.mock_nft.functions.mint(
+                    seller.address, 
+                    i, 
+                    name
+                ).build_transaction({
+                    'from': seller.address,
+                    'gas': 200000,
+                    'gasPrice': self.w3.eth.gas_price,
+                    'nonce': self.w3.eth.get_transaction_count(seller.address)
+                })
+                
+                signed_tx = seller.sign_transaction(tx)
+                tx_hash = self._send_raw_transaction(signed_tx)
+                self.w3.eth.wait_for_transaction_receipt(tx_hash)
+                nft_ids.append(i)
+                print(f"Minted NFT with ID {i}")
+            
+            # 2. Approve NFTs for marketplace
+            print("Approving NFTs for marketplace...")
+            tx = self.mock_nft.functions.setApprovalForAll(
+                self.nft_bundle_market.address, 
+                True
+            ).build_transaction({
+                'from': seller.address,
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(seller.address)
+            })
+            
+            signed_tx = seller.sign_transaction(tx)
+            tx_hash = self._send_raw_transaction(signed_tx)
+            self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            print("Approved all NFTs for marketplace")
+            
+            # 3. List NFTs in marketplace
+            print("Listing NFTs in marketplace...")
+            item_ids = []
+            for nft_id in nft_ids:
+                tx = self.nft_bundle_market.functions.listNFT(
+                    self.mock_nft.address,
+                    nft_id
+                ).build_transaction({
+                    'from': seller.address,
+                    'gas': 200000,
+                    'gasPrice': self.w3.eth.gas_price,
+                    'nonce': self.w3.eth.get_transaction_count(seller.address)
+                })
+                
+                signed_tx = seller.sign_transaction(tx)
+                tx_hash = self._send_raw_transaction(signed_tx)
+                receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+                
+                # Get item ID from event logs
+                item_id = None
+                for log in receipt['logs']:
+                    if log['address'].lower() == self.nft_bundle_market.address.lower():
+                        topics = log['topics']
+                        if len(topics) >= 3:
+                            item_id = int(topics[1].hex(), 16)
+                            break
+                
+                if item_id is None:
+                    item_count = self.nft_bundle_market.functions.getItemCount().call()
+                    item_id = item_count
+                
+                item_ids.append(item_id)
+                print(f"Listed NFT with ID {nft_id} as item ID {item_id}")
+            
+            # 4. Create two bundles
+            print("Creating bundles...")
+            
+            # Bundle 1: First two NFTs
+            bundle1_items = item_ids[:2]
+            bundle1_price = self.w3.to_wei(2, 'ether')
+            bundle1_required_buyers = 2
+            
+            tx = self.nft_bundle_market.functions.createBundleWithMetadata(
+                bundle1_items,
+                bundle1_price,
+                bundle1_required_buyers,
+                "Cosmic Digital Bundle",
+                "A beautiful collection of cosmic and digital art"
+            ).build_transaction({
+                'from': seller.address,
+                'gas': 300000,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(seller.address)
+            })
+            
+            signed_tx = seller.sign_transaction(tx)
+            tx_hash = self._send_raw_transaction(signed_tx)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            # Get bundle ID from event logs
+            bundle1_id = None
+            for log in receipt['logs']:
+                if log['address'].lower() == self.nft_bundle_market.address.lower():
+                    topics = log['topics']
+                    if len(topics) >= 2:
+                        bundle1_id = int(topics[1].hex(), 16)
+                        break
+            
+            if bundle1_id is None:
+                bundle_count = self.nft_bundle_market.functions.getBundleCount().call()
+                bundle1_id = bundle_count
+            
+            print(f"Created bundle 1 with ID {bundle1_id}")
+            
+            # Bundle 2: Next two NFTs
+            bundle2_items = item_ids[2:4]
+            bundle2_price = self.w3.to_wei(3, 'ether')
+            bundle2_required_buyers = 2
+            
+            tx = self.nft_bundle_market.functions.createBundleWithMetadata(
+                bundle2_items,
+                bundle2_price,
+                bundle2_required_buyers,
+                "Ethereal Quantum Bundle",
+                "Experience the ethereal and quantum realms in this unique collection"
+            ).build_transaction({
+                'from': seller.address,
+                'gas': 300000,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(seller.address)
+            })
+            
+            signed_tx = seller.sign_transaction(tx)
+            tx_hash = self._send_raw_transaction(signed_tx)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            # Get bundle ID from event logs
+            bundle2_id = None
+            for log in receipt['logs']:
+                if log['address'].lower() == self.nft_bundle_market.address.lower():
+                    topics = log['topics']
+                    if len(topics) >= 2:
+                        bundle2_id = int(topics[1].hex(), 16)
+                        break
+            
+            if bundle2_id is None:
+                bundle_count = self.nft_bundle_market.functions.getBundleCount().call()
+                bundle2_id = bundle_count
+            
+            print(f"Created bundle 2 with ID {bundle2_id}")
+            
+            # 5. Set TEE wallet as Shapley calculator
+            tee_wallet = self.accounts[5]
+            tx = self.nft_bundle_market.functions.setShapleyCalculator(
+                tee_wallet.address
+            ).build_transaction({
+                'from': seller.address,
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(seller.address)
+            })
+            
+            signed_tx = seller.sign_transaction(tx)
+            tx_hash = self._send_raw_transaction(signed_tx)
+            self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            print(f"Set TEE wallet as Shapley calculator: {tee_wallet.address}")
+            
+            # Store the created items and bundles in deployment data
+            self.deployment_data["initial_setup"] = {
+                "nft_ids": nft_ids,
+                "item_ids": item_ids,
+                "bundle1_id": bundle1_id,
+                "bundle2_id": bundle2_id,
+                "tee_wallet": tee_wallet.address
+            }
+            
+            print("Initial marketplace data setup complete")
+            
+        except Exception as e:
+            print(f"Error setting up initial marketplace data: {e}")
+            import traceback
+            traceback.print_exc()
     
     def save_deployment_data(self, filename="deployment_data.json"):
         """Save deployment data to a JSON file"""

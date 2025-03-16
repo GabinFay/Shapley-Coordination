@@ -1,0 +1,28 @@
+# Environment files
+.env
+.env.local
+deployment.env
+**/.env
+
+# Virtual environments
+.venv
+**/.venv
+venv
+**/venv
+
+# Git related
+.git
+.gitignore
+
+# Fly.io
+fly.toml
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Local development files
+*.log
+.DS_Store

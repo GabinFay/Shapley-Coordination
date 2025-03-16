@@ -16,5 +16,24 @@
     "charlie": "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
     "dave": "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
     "tee": "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba"
+  },
+  "initial_setup": {
+    "nft_ids": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "item_ids": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "bundle1_id": 0,
+    "bundle2_id": 0,
+    "tee_wallet": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
   }
 }
