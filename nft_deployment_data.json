@@ -1,0 +1,43 @@
+{
+  "marketplace_address": "0xfc1e512D6783E17C5E8B48Ca7a906A0C13e04224",
+  "nft_address": "0xf1B1ABA247B9953eb36dED56e774c9F3054513D4",
+  "seller_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "minted_nfts": [
+    {
+      "token_id": 0,
+      "name": "Sunset Horizon",
+      "description": "A beautiful sunset over the horizon",
+      "image_url": "https://picsum.photos/seed/0/200/200"
+    },
+    {
+      "token_id": 1,
+      "name": "Mountain Peak",
+      "description": "A majestic mountain peak",
+      "image_url": "https://picsum.photos/seed/1/200/200"
+    },
+    {
+      "token_id": 2,
+      "name": "Ocean Wave",
+      "description": "A powerful ocean wave",
+      "image_url": "https://picsum.photos/seed/2/200/200"
+    },
+    {
+      "token_id": 3,
+      "name": "Forest Path",
+      "description": "A serene path through the forest",
+      "image_url": "https://picsum.photos/seed/3/200/200"
+    },
+    {
+      "token_id": 4,
+      "name": "Desert Dunes",
+      "description": "Rolling sand dunes in the desert",
+      "image_url": "https://picsum.photos/seed/4/200/200"
+    },
+    {
+      "token_id": 5,
+      "name": "Starry Night",
+      "description": "A night sky filled with stars",
+      "image_url": "https://picsum.photos/seed/5/200/200"
+    }
+  ]
+}
