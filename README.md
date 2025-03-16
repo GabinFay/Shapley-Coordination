@@ -1,14 +1,14 @@
-# NFT Bundle Marketplace with Shapley Value Pricing
+# Bundle Marketplace with Shapley Value Pricing
 
-This project implements a proof-of-concept for an NFT bundle marketplace where multiple buyers can cooperatively purchase bundles of NFTs with fair pricing based on Shapley value calculations.
+This project implements a proof-of-concept for an bundle marketplace where multiple buyers can cooperatively purchase bundles of assets (groceries, cars, online orders) represented as unique ERC-721s (NFT) with fair pricing based on Shapley value calculations.
 
 ## Overview
 
-The marketplace allows sellers to create bundles of NFTs with a total price and a required number of buyers. Buyers can express interest in specific NFTs within a bundle. Once enough buyers express interest, the system calculates Shapley values to determine a fair price for each buyer based on their preferences.
+The marketplace allows sellers to create bundles of items with a total price and a required number of buyers. Buyers can express interest in specific assets within a bundle. Once enough buyers express interest, the system calculates Shapley values to determine a fair price for each buyer based on their preferences and factors in possible subcoalitions.
 
 ### Key Features
 
-- **NFT Bundling**: Sellers can bundle multiple NFTs together with a single price
+- **NFT Bundling**: Sellers can bundle multiple assets together with a single price
 - **Cooperative Buying**: Multiple buyers can join together to purchase a bundle
 - **Fair Pricing**: Shapley value calculation ensures each buyer pays a fair price based on their preferences
 - **TEE Integration**: Simulated Trusted Execution Environment (TEE) for secure Shapley value calculation
