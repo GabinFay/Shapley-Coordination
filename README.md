@@ -82,7 +82,7 @@ The Shapley value calculation will determine how much each buyer should pay base
 
 ## Future Enhancements
 
-- Integration with a real blockchain network
+- Use personalized AI to study each consumer's behavior and make the AI specify the NFTs/Assets instead of the consumer
 - Actual TEE implementation for secure Shapley value calculation
 - Support for ERC-1155 tokens (semi-fungible NFTs)
 - Auction-based pricing for bundles
