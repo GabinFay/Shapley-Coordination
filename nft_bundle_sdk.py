@@ -36,9 +36,9 @@ class Bundle:
     active: bool
     interested_buyers: List[str]
     completed: bool
+    paid_count: int = 0
     name: str = ""
     description: str = ""
-    paid_count: int = 0
 
 @dataclass
 class BuyerInterest:
@@ -187,7 +187,7 @@ class NFTBundleSDK:
         try:
             bundle_info = self.contract.functions.getBundleInfo(bundle_id).call()
             
-            # Parse bundle info
+            # Parse bundle info - adjust to match contract return values
             item_ids = bundle_info[0]
             price = self.w3.from_wei(bundle_info[1], 'ether')
             required_buyers = bundle_info[2]
@@ -197,6 +197,7 @@ class NFTBundleSDK:
             paid_count = bundle_info[6]
             name = bundle_info[7]
             description = bundle_info[8]
+            # Ignore placeholder value at bundle_info[9]
             
             # If name is empty, create a default name
             if not name:
